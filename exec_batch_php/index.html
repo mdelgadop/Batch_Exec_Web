@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+	<meta name='viewport' content='width=device-width, initial-scale=1'>
+	<meta name='description' content='Batches'>
+	<meta name='author' content='@mdelgadop'>
+
+	<link rel='shortcut icon' href='./favicon.ico' type='image/x-icon'>
+
+	<meta name="twitter:description" content="Batches">
+	<meta name="twitter:title" content="@mdelgadop">
+
+	<meta property="og:title" content="@mdelgadop Batches">
+	<meta property="og:description" content="Batches">
+
+	<title>@mdelgadop Batches</title>
+
+	<link rel='stylesheet' href='./assets/paper.css'>
+	<link rel='stylesheet' href='./assets/batches.css'>
+	<link rel='stylesheet' href='./assets/syntax.css'>
+
+</head>
+
+<body>
+  <div id='top' class='site container'>
+	<div class='paper' id="app">
+		<h1>@mdelgadop Batches</h1>
+	  
+		<div class="row flex-top">
+		  <div class="sm-5 col">
+			<table>
+			  <thead>
+				<tr>
+				  <th>
+					<label class="paper-btn margin btn-success btn-small" for="modal-create-batch">+</label>
+					Batches
+					</th>
+				  <th></th>
+				</tr>
+			  </thead>
+			  <tbody>
+				<tr v-for="lineJSON in batchesListJSON">
+					<td>
+					<button class="paper-btn margin btn-secondary-outline btn-small btn-block" style="text-align: left;" v-on:click="getLinesOfBatch(lineJSON.id, lineJSON.name)">{{ lineJSON.name }}</button>
+					</td> <td>
+					<button class="btn-small btn-danger" v-on:click="deleteBatch(lineJSON.id)">X</button>
+					</td>
+				</tr>
+			  </tbody>
+			</table>
+		  </div>
+		  <div class="sm-7 col" v-if="currentBatchId !== null">
+			<table>
+			  <thead>
+				<tr>
+				  <th>Lines of {{ currentBatchName }}</th>
+				  <th><button class="btn-warning" v-on:click="executeLinesOfBatch(currentBatchId)">Execute</button></th>
+				</tr>
+			  </thead>
+			  <tbody>
+				  <tr v-for="lineBatchesListJSON in linesBatchesListJSON">
+					<td colspan="2">
+						<button class="btn-small btn-danger" v-on:click="deleteLineOfBatch(lineBatchesListJSON.id)" style="padding:5px">X</button>
+							&nbsp;{{ lineBatchesListJSON.line }}
+					</td>
+				  </tr>
+				  
+				  <tr><td colspan="2">
+					Number of lines: {{ currentBatchNumLines }}
+				  </td> </tr>
+				  <tr><td>
+				  <input class="input-block" type="text" v-model.text="createLineBatchName">
+				  </td> <td>
+				  <button class="btn-small btn-success" v-on:click="CreteLineBatch()">+</button>
+				  </td> </tr>
+			  </tbody>
+			  
+			</table>
+			
+		  </div>
+		</div>
+		
+		<div v-if="resultOfExecution !== null">
+			<span v-html="resultOfExecution"></span>
+		</div>
+
+		<hr/>
+		<p>Made with <a href="https://www.getpapercss.com/">PapersCSS</a>!</p>
+		
+		<input class="modal-state" id="modal-create-batch" type="checkbox">
+		<div class="modal">
+		  <label class="modal-bg" for="modal-create-batch"></label>
+		  <div class="modal-body">
+			<label class="btn-close" for="modal-create-batch">X</label>
+			<h4 class="modal-title">New batch</h4>
+			<br/>
+			<div class="form-group">
+			  <label for="create-batch-name"></label>
+			  <input type="text" placeholder="Name" v-model.text="createBatchName" style="min-width:340px">
+			</div>
+			
+			<div class="row flex-center">
+				<button class="btn-success-outline" v-on:click="CreteBatch()">Create</button>
+			</div>
+
+		  </div>
+		</div>
+		
+	</div>
+	<div>
+		<a href="#top" class="paper-btn margin">^</a>
+	</div>
+
+	<br/>
+
+  </div>
+
+  <script src="./js/vue.js"></script>
+  
+<script>
+
+	const app = new Vue({
+		el: '#app',
+		data: {
+			currentBatchId : null,
+			currentBatchName : null,
+			currentBatchNumLines : null,
+			createLineBatchName : null,
+			resultOfExecution : null,
+			createBatchName: '',
+			batchesListJSON: [],
+			linesBatchesListJSON: []
+		},
+		created() {
+			fetch('./services/getBatchesService.php', {
+			  method: 'POST'
+			}).then(res => res.json())
+			.then(response => 
+			{
+				if(response===null)
+				{
+					alert('Error de conexión');
+				}
+				else if(response.code==='200')
+				{
+					this.batchesListJSON = response.batches;
+				}
+				else
+				{
+					alert(response.message);
+				}
+			} )
+			.catch(error => { alert(error); } );
+		},
+		methods: {
+			getLinesOfBatch: function(batch_id, batch_name)
+			{
+				this.currentBatchId = batch_id;
+				this.currentBatchName = batch_name;
+				
+				var data = new FormData();
+				data.append('i', batch_id);
+				
+				fetch('./services/getLinesOfBatchService.php', {
+				  method: 'POST', // or 'PUT'
+				  body: data
+				}).then(res => res.json())
+				.then(response => 
+				{
+					if(response===null)
+					{
+						alert('Error de conexión');
+					}
+					else if(response.code==='200')
+					{
+						this.currentBatchNumLines = response.numlines;
+						this.linesBatchesListJSON = response.lines;
+					}
+					else
+					{
+						alert(response.message);
+					}
+				} )
+				.catch(error => { alert(error); } );
+			},
+			deleteBatch: function (batch_id)
+			{
+				var data = new FormData();
+				data.append('i', batch_id);
+				
+				fetch('./services/deleteBatchService.php', {
+				  method: 'POST', // or 'PUT'
+				  body: data
+				}).then(res => res.json())
+				.then(response => 
+				{ 
+					if(response===null)
+					{
+						alert('Error de conexión');
+					}
+					else if(response.code==='200')
+					{
+						location.reload();
+					}
+					else
+					{
+						alert(response.message);
+					}
+				} )
+				.catch(error => { } );
+			},
+			CreteBatch: function()
+			{	
+				var data = new FormData();
+				data.append('n', this.createBatchName);
+				
+				fetch('./services/createBatchService.php', {
+				  method: 'POST', // or 'PUT'
+				  body: data
+				}).then(res => res.json())
+				.then(response => 
+				{ 
+					if(response===null)
+					{
+						alert('Error de conexión');
+					}
+					else if(response.code==='200')
+					{
+						location.reload();
+					}
+					else
+					{
+						alert(response.message);
+					}
+				} )
+				.catch(error => { } );
+			},
+			CreteLineBatch: function()
+			{
+				var data = new FormData();
+				
+				data.append('i', this.currentBatchId);
+				data.append('l', this.createLineBatchName);
+				fetch('./services/createLineOfBatchService.php', {
+				  method: 'POST', // or 'PUT'
+				  body: data
+				}).then(res => res.json())
+				.then(response => 
+				{ 
+					if(response===null)
+					{
+						alert('Error de conexión');
+					}
+					else if(response.code==='200')
+					{
+						this.createLineBatchName = '';
+						this.getLinesOfBatch(this.currentBatchId, this.currentBatchName);
+					}
+					else
+					{
+						alert(response.message);
+					}
+				} )
+				.catch(error => { } );
+			},
+			deleteLineOfBatch: function(line_of_batch_id)
+			{
+				var data = new FormData();
+				data.append('i', line_of_batch_id);
+				
+				fetch('./services/deleteLineOfBatchService.php', {
+				  method: 'POST', // or 'PUT'
+				  body: data
+				}).then(res => res.json())
+				.then(response => 
+				{ 
+					if(response===null)
+					{
+						alert('Error de conexión');
+					}
+					else if(response.code==='200')
+					{
+						this.createLineBatchName = '';
+						this.getLinesOfBatch(this.currentBatchId, this.currentBatchName);
+					}
+					else
+					{
+						alert(response.message);
+					}
+				} )
+				.catch(error => { } );
+			},
+			executeLinesOfBatch: function(batch_id)
+			{
+				this.resultOfExecution = '<hr/><h3>Execution of ' + this.currentBatchName + '</h3>';
+				var index = 0;
+				while(index < this.currentBatchNumLines)
+				{
+					var data = new FormData();
+					data.append('bi', this.currentBatchId);
+					data.append('li', this.linesBatchesListJSON[index].id);
+					
+					fetch('./services/executeBatchService.php', {
+					  method: 'POST', // or 'PUT'
+					  body: data
+					}).then(res => res.json())
+					.then(response => 
+					{ 
+						if(response===null)
+						{
+							alert('Error de conexión');
+						}
+						else if(response.code==='200')
+						{
+							this.resultOfExecution = this.resultOfExecution + '<h4>' + response.line + '</h4>' + response.result + '<br/><br/>';
+						}
+						else
+						{
+							this.resultOfExecution = this.resultOfExecution + '<h4>' + response.line + '</h4>' + response.message + '<br/><br/>';
+						}
+					} )
+					.catch(error => { } );
+					
+					index++;
+				}
+			}
+
+		}
+	});
+  </script>
+
+</body>
+
+</html>
